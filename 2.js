@@ -1,5 +1,5 @@
 function hasProperty(propertyName, obj) {
-    return obj.hasOwnProperty(propertyName);
+    return (propertyName in obj);
 }
 
 // Примеры использования:
@@ -15,9 +15,5 @@ student.ownCity = "Piter";
 console.log(hasProperty("name", student));
 console.log(hasProperty("ownCity", student));
 console.log(hasProperty("age", student));
-
-// Проверка с учетом унаследованных свойств
-console.log(hasPropertyIncludeInherited("name", student));
-console.log(hasPropertyIncludeInherited("ownCity", student));
-console.log(hasPropertyIncludeInherited("age", student));
-console.log(hasPropertyIncludeInherited("invalid", student));
+console.log(hasProperty("fdhjgdkj", student));
+console.log(hasProperty("ownCity", person));

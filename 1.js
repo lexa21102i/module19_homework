@@ -14,4 +14,3 @@ const student = Object.create(person);
 student.ownCity = "Piter";
 student.name = "Stepan";
 printOwnProperties(student);
-console.log(student.city);
