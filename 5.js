@@ -1,203 +1,172 @@
-// Родительский класс для электроприборов
+
 class ElectricalAppliance {
   constructor(name, power) {
     this.name = name;
-    this.power = power;
+    this.maxPower = power; // переименовано для ясности
     this.isPlugged = false;
   }
 
-// Метод для включения прибора в розетку
-plugIn() {
+  plugIn() {
     if (!this.isPlugged) {
       this.isPlugged = true;
       console.log(`${this.name} включен(а) в розетку.`);
     } else {
       console.log(`${this.name} уже включен(а) в розетку.`);
     }
-}
+  }
 
-// Метод для выключения прибора из розетки
-unplug() {
+  unplug() {
     if (this.isPlugged) {
       this.isPlugged = false;
       console.log(`${this.name} выключен(а) из розетки.`);
     } else {
       console.log(`${this.name} уже выключен(а) из розетки.`);
     }
-}
+  }
 
-// Метод для получения текущей потребляемой мощности
-getCurrentPower() {
-    if (this.isPlugged) {
-      console.log(`${this.name} потребляет ${this.power} Вт мощности.`);
-      return this.power;
-    } else {
+  // Принцип DRY: вынесения логики проверки включения
+  isPluggedAndLog() {
+    if (!this.isPlugged) {
       console.log(`${this.name} не включен(а) в розетку.`);
-      return 0;
+      return false;
     }
+    return true;
+  }
+
+  // Принцип OCP: метод для переопределения, но с базовой реализацией
+  // L (LSP) - все наследники должны возвращать число
+  getCurrentPower() {
+    if (!this.isPluggedAndLog()) return 0;
+    return this.maxPower;
+  }
+
+  // Принцип KISS: простой метод без лишней логики
+  getCurrentPowerFormatted() {
+    const power = this.getCurrentPower();
+    console.log(`${this.name} потребляет ${power.toFixed(1)} Вт мощности.`);
+    return power;
   }
 }
 
-// Класс для настольной лампы
+// I (ISP) - Вместо того чтобы заставлять все приборы иметь яркость/цвет, выносим в отдельную "роль"
+const BrightnessAdjustable = {
+  setBrightness(percent) {
+    if (percent < 0 || percent > 100) {
+      console.log('Яркость должна быть в диапазоне от 0 до 100');
+      return;
+    }
+    this.brightness = percent;
+    console.log(`Яркость ${this.name} установлена на ${percent}%`);
+  },
+
+  getCurrentPower() {
+    if (!this.isPluggedAndLog()) return 0;
+    const actualPower = (this.maxPower * (this.brightness ?? 100)) / 100;
+    console.log(`${this.name} потребляет ${actualPower.toFixed(1)} Вт (${this.brightness}% яркости).`);
+    return actualPower;
+  }
+};
+
+// I (ISP) - интерфейс управления цветом вынесен отдельно
+const ColorAdjustable = {
+  setColorTemperature(kelvin) {
+    if (kelvin < 2700 || kelvin > 6500) {
+      console.log('Цветовая температура должна быть в диапазоне 2700-6500K');
+      return;
+    }
+    this.colorTemperature = kelvin;
+    console.log(`Цветовая температура ${this.name} установлена на ${kelvin}K`);
+  }
+};
+
+// S (SRP) - класс отвечает только за комбинирование примесей
+// O (OCP) - расширяет ElectricalAppliance, не изменяя его
+// L (LSP) - корректно заменяет родителя: getCurrentPower() возвращает число
+// I (ISP) - берёт ТОЛЬКО нужные интерфейсы (BrightnessAdjustable, ColorAdjustable)
 class DeskLamp extends ElectricalAppliance {
-  constructor(name, power, brightness, colorTemperature) {
-    super(name, power); 
+  constructor(name, power, brightness = 100, colorTemperature = 4000) {
+    super(name, power);
     this.brightness = brightness;
     this.colorTemperature = colorTemperature;
-}
-setBrightness(percent) {
-    if (percent >= 0 && percent <= 100) {
-      this.brightness = percent;
-      console.log(`Яркость лампы ${this.name} установлена на ${percent}%`);
-      const actualPower = (this.power * percent) / 100;
-      console.log(`Текущее потребление: ${actualPower.toFixed(1)} Вт`);
-    } else {
-        console.log('Яркость должна быть в диапазоне от 0 до 100');
-    }
-}
-setColorTemperature(kelvin) {
-    if (kelvin >= 2700 && kelvin <= 6500) {
-      this.colorTemperature = kelvin;
-      console.log(`Цветовая температура лампы ${this.name} установлена на ${kelvin}K`);
-    } else {
-        console.log('Цветовая температура должна быть в диапазоне 2700-6500K');
-    }
-}
-getCurrentPower() {
-    if (this.isPlugged) {
-        const actualPower = (this.power * this.brightness) / 100;
-        console.log(`${this.name} потребляет ${actualPower.toFixed(1)} Вт мощности (${this.brightness}% яркости).`);
-        return actualPower;
-    } else {
-        console.log(`${this.name} не включен(а) в розетку.`);
-        return 0;
-    }
-}
+  }
+
+  setBrightness(percent) {
+    return BrightnessAdjustable.setBrightness.call(this, percent);
+  }
+
+  setColorTemperature(kelvin) {
+    return ColorAdjustable.setColorTemperature.call(this, kelvin);
+  }
+
+  getCurrentPower() {
+    return BrightnessAdjustable.getCurrentPower.call(this);
+  }
 }
 
-// Класс для компьютера
+// YAGNI: удалено неиспользуемое поле isGaming
+// S (SRP) - класс отвечает только за логику компьютера (задачи, CPU)
+// O (OCP) - расширяет базовый класс, не изменяя его
+// L (LSP) - getCurrentPower() возвращает число, как и родитель
 class Computer extends ElectricalAppliance {
-    constructor(name, power, cpuModel, ramSize, isGaming) {
-        super(name, power);
-        this.cpuModel = cpuModel;
-        this.ramSize = ramSize;
-        this.isGaming = isGaming;
-        this.cpuLoad = 0;
-    }
-runTask(taskName, cpuLoad) {
-    if (!this.isPlugged) {
-        console.log(`Невозможно запустить задачу "${taskName}". Компьютер ${this.name} не включен.`);
-        return;
-    }
-    this.cpuLoad = Math.min(cpuLoad, 100);
-    console.log(`Запущена задача "${taskName}" на компьютере ${this.name}`);
-    console.log(`Нагрузка на процессор: ${this.cpuLoad}%`);
-    const actualPower = (this.power * this.cpuLoad) / 100;
-    console.log(`Текущее потребление: ${actualPower.toFixed(1)} Вт из ${this.power} Вт максимальных`);
-}
-stopTask() {
-    if (!this.isPlugged) {
-        console.log(`Компьютер ${this.name} не включен.`);
-        return;
-    }
+  constructor(name, power, cpuModel, ramSize) {
+    super(name, power);
+    this.cpuModel = cpuModel;
+    this.ramSize = ramSize;
+    this.cpuLoad = 0; 
+  }
+
+  runTask(taskName, cpuLoad) {
+    if (!this.isPluggedAndLog()) return;
+    
+    this.cpuLoad = Math.min(100, Math.max(0, cpuLoad));
+    console.log(`Запущена задача "${taskName}" на ${this.name}`);
+    console.log(`Нагрузка CPU: ${this.cpuLoad}%`);
+  }
+
+  stopTask() {
+    if (!this.isPluggedAndLog()) return;
     this.cpuLoad = 0;
-    console.log(`Все задачи на компьютере ${this.name} завершены. Процессор простаивает.`);
-    console.log(`Текущее потребление: 0 Вт`);
-}
+    console.log(`Задачи на ${this.name} завершены. CPU простаивает.`);
+  }
 
-getCurrentPower() {
-    if (this.isPlugged) {
-        const actualPower = (this.power * this.cpuLoad) / 100;
-        if (this.cpuLoad > 0) {
-            console.log(`${this.name} потребляет ${actualPower.toFixed(1)} Вт мощности (нагрузка CPU: ${this.cpuLoad}%).`);
-        } else {
-            console.log(`${this.name} потребляет ${actualPower.toFixed(1)} Вт мощности (в режиме ожидания).`);
-        }
-        return actualPower;
-    } else {
-        console.log(`${this.name} не включен(а) в розетку.`);
-        return 0;
-    }
-}
+  getCurrentPower() {
+    if (!this.isPluggedAndLog()) return 0;
+    const actualPower = (this.maxPower * this.cpuLoad) / 100;
+    const state = this.cpuLoad > 0 ? `нагрузка CPU: ${this.cpuLoad}%` : 'режим ожидания';
+    console.log(`${this.name} потребляет ${actualPower.toFixed(1)} Вт (${state})`);
+    return actualPower;
+  }
 
-getSpecs() {
+  getSpecs() {
     console.log(`\nХарактеристики ${this.name}:`);
-    console.log(`  Процессор: ${this.cpuModel}`);
-    console.log(`  ОЗУ: ${this.ramSize} ГБ`);
-    console.log(`  Тип: ${this.isGaming ? 'Игровой' : 'Офисный'}`);
-    console.log(`  Максимальная мощность: ${this.power} Вт`);
-}
+    console.log(`  CPU: ${this.cpuModel}, RAM: ${this.ramSize} ГБ`);
+    console.log(`  Макс. мощность: ${this.maxPower} Вт`);
+  }
 }
 
-// Функция для подсчета общей потребляемой мощности нескольких приборов
-function calculateTotalPower(...appliances) {
-    let totalPower = 0;
-    appliances.forEach(appliance => {
-        if (appliance.isPlugged) {
-            const currentPower = appliance.getCurrentPower();
-            totalPower += currentPower;
-        }
-    });
+//DRY: единый способ получения мощности
+// L (LSP) - работает с любым наследником ElectricalAppliance благодаря полиморфизму
+const calculateTotalPower = (...appliances) => {
+  let total = 0;
+  for (const appliance of appliances) {
+    if (appliance.isPlugged) {
+      total += appliance.getCurrentPower();
+    }
+  }
+  console.log(`\nОбщая мощность включённых приборов: ${total.toFixed(1)} Вт`);
+  return total;
+};
 
-    console.log(`\nОбщая потребляемая мощность включенных приборов: ${totalPower.toFixed(1)} Вт`);
-    return totalPower;
-}
+const lamp = new DeskLamp('Лампа', 60, 75, 4000);
+const gamingPC = new Computer('Игровой ПК', 500, 'Intel i9', 32);
+const officePC = new Computer('Офисный ПК', 250, 'Intel i5', 16);
 
-const deskLamp = new DeskLamp('Настольная лампа', 60, 75, 4000);
-const gamingComputer = new Computer('Игровой компьютер', 500, 'Intel i9-13900K', 32, true);
-const officeComputer = new Computer('Офисный компьютер', 250, 'Intel i5-12400', 16, false);
+lamp.plugIn();
+lamp.setBrightness(50);
+lamp.getCurrentPower();
 
-// Демонстрация работы
-console.log('=== Иерархия электроприборов (ES6 классы) ===\n');
+gamingPC.plugIn();
+gamingPC.runTask('Игра', 95);
+gamingPC.getCurrentPower();
 
-// Выводим информацию о приборах
-console.log('Созданные приборы:');
-console.log(deskLamp);
-console.log(gamingComputer);
-console.log(officeComputer);
-console.log('\n');
-
-// Работа с настольной лампой
-console.log('--- Настольная лампа ---');
-deskLamp.plugIn(); 
-deskLamp.getCurrentPower(); 
-deskLamp.setBrightness(50); 
-deskLamp.setColorTemperature(3000); 
-deskLamp.getCurrentPower(); 
-deskLamp.unplug(); // Выключаем
-deskLamp.getCurrentPower(); 
-console.log('\n');
-
-// Работа с игровым компьютером
-console.log('--- Игровой компьютер ---');
-gamingComputer.getSpecs(); 
-gamingComputer.plugIn(); 
-gamingComputer.getCurrentPower(); 
-gamingComputer.runTask('Cyberpunk 2077', 95); 
-gamingComputer.getCurrentPower(); 
-gamingComputer.stopTask(); 
-gamingComputer.getCurrentPower(); 
-console.log('\n');
-
-// Работа с офисным компьютером
-console.log('--- Офисный компьютер ---');
-officeComputer.getSpecs(); 
-officeComputer.plugIn();
-officeComputer.runTask('Microsoft Word', 15); 
-officeComputer.runTask('Excel расчеты', 25); 
-officeComputer.getCurrentPower(); 
-officeComputer.stopTask();
-officeComputer.unplug(); 
-console.log('\n');
-
-console.log('--- Подсчет общей мощности ---');
-
-// Включаем несколько приборов для подсчета
-deskLamp.plugIn();
-deskLamp.setBrightness(80);
-gamingComputer.plugIn();
-officeComputer.plugIn();
-officeComputer.runTask('Браузер с 10 вкладками', 30);
-
-console.log('\n');
-calculateTotalPower(deskLamp, gamingComputer, officeComputer);
+calculateTotalPower(lamp, gamingPC);
